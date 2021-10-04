@@ -27,19 +27,30 @@ void AMovingPlatform::BeginPlay() {
 void AMovingPlatform::Tick(float DeltaTime) {
 	Super::Tick(DeltaTime);
 
-	if (HasAuthority()) { // Only move on server
-		FVector Location = GetActorLocation();
+	if (ActiveTriggers) {
+		if (HasAuthority()) { // Only move on server
+			FVector Location = GetActorLocation();
 
-		if (FVector::Distance(GlobalStartLocation, Location) >= FVector::Distance(GlobalStartLocation, GlobalTargetLocation)) {
-			FVector tmp = GlobalStartLocation;
-			GlobalStartLocation = GlobalTargetLocation;
-			GlobalTargetLocation = tmp;
+			if (FVector::Distance(GlobalStartLocation, Location) >= FVector::Distance(GlobalStartLocation, GlobalTargetLocation)) {
+				FVector tmp = GlobalStartLocation;
+				GlobalStartLocation = GlobalTargetLocation;
+				GlobalTargetLocation = tmp;
+			}
+			// Calculate and set new location of not at target location
+			FVector Direction = (GlobalTargetLocation - GlobalStartLocation).GetSafeNormal();
+			Location += ActiveTriggers * Speed * DeltaTime * Direction;
+			SetActorLocation(Location);
 		}
-		// Calculate and set new location of not at target location
-		FVector Direction = (GlobalTargetLocation - GlobalStartLocation).GetSafeNormal();
-		Location += Speed * DeltaTime * Direction;
-		SetActorLocation(Location);
 	}
 
 	//bool IsServer = HasAuthority();
+}
+
+void AMovingPlatform::AddActiveTrigger() {
+	ActiveTriggers++;
+}
+
+void AMovingPlatform::RemoveActiveTrigger() {
+	if (ActiveTriggers > 0) ActiveTriggers--;
+	else ActiveTriggers = 0;
 }
