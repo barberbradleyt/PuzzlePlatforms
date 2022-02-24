@@ -5,3 +5,6 @@ Star local server:
 
 Start client to local server:
 "D:\Program Files\Uplay\UE_4.25\Engine\Binaries\Win64\UE4Editor.exe" "D:\Users\Bradley\Documents\Unreal Projects\PuzzlePlatforms\PuzzlePlatforms.uproject" 192.168.1.70 -game -log
+
+Start with Steam
+"D:\Program Files\Uplay\UE_4.25\Engine\Binaries\Win64\UE4Editor.exe" "D:\Users\Bradley\Documents\Unreal Projects\PuzzlePlatforms\PuzzlePlatforms.uproject" -game -log

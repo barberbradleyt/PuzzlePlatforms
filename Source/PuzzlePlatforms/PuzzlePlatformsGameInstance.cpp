@@ -83,9 +83,11 @@ void UPuzzlePlatformsGameInstance::CreateSession() {
 	UE_LOG(LogTemp, Display, TEXT("Creating session..."));
 	
 	FOnlineSessionSettings SessionSettings;
-	SessionSettings.bIsLANMatch = true;
+	SessionSettings.bIsLANMatch = false;
 	SessionSettings.NumPublicConnections = 2;
 	SessionSettings.bShouldAdvertise = true;
+	SessionSettings.bUsesPresence = true; // Use lobbies
+	//SessionSettings.bUseLobbiesIfAvailable = true; // Use lobbies in UE >= 4.27
 
 	SessionInterface->CreateSession(0, SESSION_NAME, SessionSettings);
 }
@@ -132,7 +134,9 @@ void UPuzzlePlatformsGameInstance::RefreshServerList() {
 		return;
 	}
 	UE_LOG(LogTemp, Display, TEXT("Searching for sessions..."));
-	SessionSearch->bIsLanQuery = true;
+	//SessionSearch->bIsLanQuery = true;
+	SessionSearch->MaxSearchResults = 100;
+	SessionSearch->QuerySettings.Set(SEARCH_PRESENCE, true, EOnlineComparisonOp::Equals);
 	SessionInterface->FindSessions(0, SessionSearch.ToSharedRef());
 }
 
@@ -181,16 +185,6 @@ void UPuzzlePlatformsGameInstance::Join(uint32 Index) {
 	UE_LOG(LogTemp, Warning, TEXT("Calling SessionInterface->JoinSession..."));
 	SessionInterface->JoinSession(0, SESSION_NAME, SessionSearch->SearchResults[Index]);
 	UE_LOG(LogTemp, Warning, TEXT("Awaiting response..."));
-
-	/*
-	UEngine* Engine = GetEngine();
-	if (!ensure(Engine != nullptr)) return;
-	Engine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Cyan, FString::Printf(TEXT("Joining %s..."), *IP));
-
-	APlayerController* PlayerController = GetFirstLocalPlayerController();
-	if (!ensure(PlayerController != nullptr)) return;
-	PlayerController->ClientTravel(*IP, TRAVEL_Absolute);
-	*/
 }
 
 void UPuzzlePlatformsGameInstance::OnJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type Result) {
@@ -236,6 +230,7 @@ void UPuzzlePlatformsGameInstance::OnJoinSessionComplete(FName SessionName, EOnJ
 	APlayerController* PlayerController = GetFirstLocalPlayerController();
 	if (!ensure(PlayerController != nullptr)) return;
 	PlayerController->ClientTravel(*Address, TRAVEL_Absolute);
+	Engine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Cyan, FString::Printf(TEXT("Successfully joined"), *Address));
 }
 
 void UPuzzlePlatformsGameInstance::LoadMainMenu() {
