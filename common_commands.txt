@@ -1,10 +1,5 @@
-"D:\Program Files\Uplay\UE_4.25\Engine\Binaries\Win64\UE4Editor.exe" "D:\Users\Bradley\Documents\Unreal Projects\PuzzlePlatforms\PuzzlePlatforms.uproject" [/Game/<path_to_map_from_content_dir> | <ip_address>] {-game | -server} [-log]
-
-Star local server:
-"D:\Program Files\Uplay\UE_4.25\Engine\Binaries\Win64\UE4Editor.exe" "D:\Users\Bradley\Documents\Unreal Projects\PuzzlePlatforms\PuzzlePlatforms.uproject" /Game/ThirdPersonCPP/Maps/ThirdPersonExampleMap -server -log
-
-Start client to local server:
-"D:\Program Files\Uplay\UE_4.25\Engine\Binaries\Win64\UE4Editor.exe" "D:\Users\Bradley\Documents\Unreal Projects\PuzzlePlatforms\PuzzlePlatforms.uproject" 192.168.1.70 -game -log
-
 Start with Steam
-"D:\Program Files\Uplay\UE_4.25\Engine\Binaries\Win64\UE4Editor.exe" "D:\Users\Bradley\Documents\Unreal Projects\PuzzlePlatforms\PuzzlePlatforms.uproject" -game -log
+& "D:\Program Files\Uplay\UE_4.25\Engine\Binaries\Win64\UE4Editor.exe" "D:\Users\Bradley\Documents\Unreal Projects\PuzzlePlatforms\PuzzlePlatforms.uproject" -game -log
+
+Start w/o Steam - local testing
+& "D:\Program Files\Uplay\UE_4.25\Engine\Binaries\Win64\UE4Editor.exe" "D:\Users\Bradley\Documents\Unreal Projects\PuzzlePlatforms\PuzzlePlatforms.uproject" -game -log -nosteam

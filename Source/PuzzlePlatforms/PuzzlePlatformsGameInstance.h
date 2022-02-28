@@ -29,7 +29,7 @@ public:
 	void LoadPauseMenu();
 
 	UFUNCTION(Exec)
-	void Host() override;
+	void Host(FString LobbyName) override;
 
 	UFUNCTION(Exec)
 	void Join(uint32 Index) override;
@@ -39,6 +39,8 @@ public:
 	void RefreshServerList() override;
 
 private:
+	bool IsLAN = false;
+
 	TSubclassOf<UUserWidget> MainMenuClass;
 	TSubclassOf<UUserWidget> PauseMenuClass;
 
@@ -47,7 +49,7 @@ private:
 	IOnlineSessionPtr SessionInterface;
 	TSharedPtr<class FOnlineSessionSearch> SessionSearch;
 
-	void CreateSession();
+	void CreateSession(FString LobbyName);
 	void ReCreateSession();
 
 	void OnCreateSessionComplete(FName SessionName, bool Success);

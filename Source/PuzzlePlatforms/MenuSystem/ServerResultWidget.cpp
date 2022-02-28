@@ -8,6 +8,8 @@
 
 #include "MainMenu.h"
 
+//------------ Getters and Setters ------------//
+//SessionID
 void UServerResultWidget::SetSessionID(FString NewID) {
     SessionID = NewID;
 }
@@ -16,6 +18,7 @@ FString UServerResultWidget::GetSessionID() {
     return SessionID;
 }
 
+//ServerName
 void UServerResultWidget::SetServerName(FString Name) {
 	ServerName->SetText(FText::FromString(Name));
 }
@@ -23,6 +26,25 @@ void UServerResultWidget::SetServerName(FString Name) {
 FText UServerResultWidget::GetServerName() {
 	return ServerName->GetText();
 }
+
+//ServerHostname
+void UServerResultWidget::SetServerHostname(FString Hostname) {
+	ServerHostname->SetText(FText::FromString(Hostname));
+}
+
+FText UServerResultWidget::GetServerHostname() {
+	return ServerHostname->GetText();
+}
+
+//PlayerCount
+void UServerResultWidget::SetPlayerCount(FString CountString) {
+	PlayerCount->SetText(FText::FromString(CountString));
+}
+
+FText UServerResultWidget::GetPlayerCount() {
+	return PlayerCount->GetText();
+}
+//---------------------------------------------//
 
 void UServerResultWidget::Setup(class UMainMenu* InParent, uint32 InIndex) {
 	Parent = InParent;

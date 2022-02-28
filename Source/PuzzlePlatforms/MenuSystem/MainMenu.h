@@ -6,6 +6,17 @@
 #include "MenuWidget.h"
 #include "MainMenu.generated.h"
 
+
+USTRUCT()
+struct FServerData {
+	GENERATED_BODY()
+
+	FString Name;
+	FString Hostname;
+	uint16 CurrentPlayers;
+	uint16 MaxPlayers;
+};
+
 /**
  * 
  */
@@ -17,7 +28,7 @@ class PUZZLEPLATFORMS_API UMainMenu : public UMenuWidget
 public:
 	UMainMenu(const FObjectInitializer& ObjectInitializer);
 
-	void SetServerList(TArray<FString> ServerNames);
+	void SetServerList(TArray<FServerData> ServerData);
 
 	void SelectIndex(uint32 Index);
 
@@ -33,6 +44,15 @@ private:
 	class UButton* HostButton;
 
 	UPROPERTY(meta = (BindWidget))
+	class UEditableTextBox* CustomLobbyName;
+
+	UPROPERTY(meta = (BindWidget))
+	class UButton* HostLobbyButton;
+
+	UPROPERTY(meta = (BindWidget))
+	class UButton* BackFromHostButton;
+
+	UPROPERTY(meta = (BindWidget))
 	class UButton* JoinButton;
 
 	UPROPERTY(meta = (BindWidget))
@@ -42,13 +62,16 @@ private:
 	class UButton* JoinWithIPButton;
 
 	UPROPERTY(meta = (BindWidget))
-	class UButton* BackToMainButton;
+	class UButton* BackFromJoinButton;
 
 	UPROPERTY(meta = (BindWidget))
 	class UWidgetSwitcher* MenuSwitcher;
 
 	UPROPERTY(meta = (BindWidget))
 	class UWidget* MainMenu;
+
+	UPROPERTY(meta = (BindWidget))
+	class UWidget* HostMenu;
 
 	UPROPERTY(meta = (BindWidget))
 	class UWidget* JoinMenu;
@@ -63,6 +86,9 @@ private:
 	void OpenMainMenu();
 
 	UFUNCTION()
+	void OpenHostMenu();
+
+	UFUNCTION()
 	void OpenJoinMenu();
 
 	UFUNCTION()
@@ -72,4 +98,6 @@ private:
 	void QuitPressed();
 
 	TOptional<uint32> SelectedIndex;
+
+	void UpdateChildren();
 };

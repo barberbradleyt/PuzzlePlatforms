@@ -10,6 +10,7 @@
 #include "MenuSystem/MenuWidget.h"
 
 const static FName SESSION_NAME = TEXT("My Game Session - 112bvvg47fg");
+const static FName CUSTOM_NAME_KEY = TEXT("CustomSessionName");
 
 UPuzzlePlatformsGameInstance::UPuzzlePlatformsGameInstance(const FObjectInitializer& ObjectInitializer) {
 	ConstructorHelpers::FClassFinder<UUserWidget> MainMenuBPClass(TEXT("/Game/MenuSystem/WBP_MainMenu"));
@@ -40,6 +41,7 @@ void UPuzzlePlatformsGameInstance::Init() {
 		return;
 	}
 	UE_LOG(LogTemp, Display, TEXT("Found session interface."));
+	IsLAN = IOnlineSubsystem::Get()->GetSubsystemName().ToString() == "NULL";
 
 	//Session event handlers required since session operations are asynchronous
 	SessionInterface->OnCreateSessionCompleteDelegates.AddUObject(this, &UPuzzlePlatformsGameInstance::OnCreateSessionComplete);
@@ -68,26 +70,27 @@ void UPuzzlePlatformsGameInstance::LoadPauseMenu() {
 	PauseMenu->SetMenuInterface(this);
 }
 
-void UPuzzlePlatformsGameInstance::Host() {
+void UPuzzlePlatformsGameInstance::Host(FString LobbyName) {
 	if (SessionInterface.IsValid()) {
 		auto ExistingSession = SessionInterface->GetNamedSession(SESSION_NAME);
 		if (ExistingSession != nullptr) {
 			UE_LOG(LogTemp, Warning, TEXT("Existing session found. ReCreating..."));
 			ReCreateSession();
 		}
-		else CreateSession();
+		else CreateSession(LobbyName);
 	}
 }
 
-void UPuzzlePlatformsGameInstance::CreateSession() {
+void UPuzzlePlatformsGameInstance::CreateSession(FString LobbyName) {
 	UE_LOG(LogTemp, Display, TEXT("Creating session..."));
-	
+
 	FOnlineSessionSettings SessionSettings;
-	SessionSettings.bIsLANMatch = false;
+	SessionSettings.bIsLANMatch = IsLAN;
 	SessionSettings.NumPublicConnections = 2;
 	SessionSettings.bShouldAdvertise = true;
 	SessionSettings.bUsesPresence = true; // Use lobbies
 	//SessionSettings.bUseLobbiesIfAvailable = true; // Use lobbies in UE >= 4.27
+	SessionSettings.Set(CUSTOM_NAME_KEY, LobbyName, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
 	SessionInterface->CreateSession(0, SESSION_NAME, SessionSettings);
 }
@@ -123,7 +126,8 @@ void UPuzzlePlatformsGameInstance::OnDestroySessionComplete(FName SessionName, b
 	}
 	UE_LOG(LogTemp, Display, TEXT("Session destruction complete."));
 
-	CreateSession();
+	//TODO: This should re-use the custom lobby name
+	CreateSession(TEXT("Recreated Session"));
 }
 
 void UPuzzlePlatformsGameInstance::RefreshServerList() {
@@ -151,19 +155,45 @@ void UPuzzlePlatformsGameInstance::OnFindSessionComplete(bool bWasSuccessful) {
 	auto Results = SessionSearch->SearchResults;
 	if (Results.Num() <= 0) {
 		UE_LOG(LogTemp, Warning, TEXT("No sessions found."));
+		
+		// For list testing
+		/*
+		TArray<FString> TestNames;
+		TestNames.Add("Test Result 1");
+		TestNames.Add("Test Result 2");
+		Menu->SetServerList(TestNames);
+		*/
+		//
+
 		return;
 	}
 
 	//Update ServerList on Join Menu 
-	TArray<FString> ServerNames;
+	TArray<FServerData> ServerData;
 	for (const FOnlineSessionSearchResult& Result : Results) {
 		if (!Result.IsValid()) {
 			UE_LOG(LogTemp, Error, TEXT("Search result invalid."));
 		}
-		UE_LOG(LogTemp, Warning, TEXT("Session ID = %s"), *Result.GetSessionIdStr());
-		ServerNames.Add(Result.GetSessionIdStr());
+
+		FServerData Server;
+		if (!Result.Session.SessionSettings.Get(CUSTOM_NAME_KEY, Server.Name)) {
+			Server.Name = Result.GetSessionIdStr();
+		}
+		Server.Hostname = Result.Session.OwningUserName;
+		Server.MaxPlayers = Result.Session.SessionSettings.NumPublicConnections;
+		Server.CurrentPlayers = Server.MaxPlayers - Result.Session.NumOpenPublicConnections;
+
+		//Debugging
+		UE_LOG(LogTemp, Warning, TEXT("Session Name = %s"), *Server.Name);
+		UE_LOG(LogTemp, Warning, TEXT("Owning Username = %s"), *Server.Hostname);
+		UE_LOG(LogTemp, Warning, TEXT("CurrentPlayers = %d"), Server.CurrentPlayers);
+		UE_LOG(LogTemp, Warning, TEXT("MaxPlayers = %d"), Server.MaxPlayers);
+		//
+
+		ServerData.Add(Server);
 	}
-	Menu->SetServerList(ServerNames);
+
+	Menu->SetServerList(ServerData);
 }
 
 void UPuzzlePlatformsGameInstance::Join(uint32 Index) {
@@ -191,32 +221,43 @@ void UPuzzlePlatformsGameInstance::OnJoinSessionComplete(FName SessionName, EOnJ
 	UE_LOG(LogTemp, Warning, TEXT("Response received. Processing..."));
 
 	// Ensure Result is successful
-	if (Result == NULL) return;
-	if (Result != EOnJoinSessionCompleteResult::Type::Success) {
+	if (Result == NULL) {
+		UE_LOG(LogTemp, Error, TEXT("Join result was NULL."));
+		return;
+	}
+
+	
+	if (IsLAN) { //Result does not come back Success for LAN
+		UE_LOG(LogTemp, Error, TEXT("Joining LAN session."));
+	}
+	else if (Result != EOnJoinSessionCompleteResult::Type::Success) {
 		switch (Result)
 		{
 		case EOnJoinSessionCompleteResult::SessionIsFull:
 			UE_LOG(LogTemp, Error, TEXT("Session is full. Unable to join session."));
-			break;
+			return;
 		case EOnJoinSessionCompleteResult::SessionDoesNotExist:
 			UE_LOG(LogTemp, Error, TEXT("Session does not exist."));
-			break;
+			return;
 		case EOnJoinSessionCompleteResult::CouldNotRetrieveAddress:
 			UE_LOG(LogTemp, Error, TEXT("Could not retrieve session address. Unable to join session."));
-			break;
+			return;
 		case EOnJoinSessionCompleteResult::AlreadyInSession:
 			UE_LOG(LogTemp, Error, TEXT("Already in selected session."));
-			break;
+			return;
 		case EOnJoinSessionCompleteResult::UnknownError:
 			UE_LOG(LogTemp, Error, TEXT("Unknown error. Unable to join session."));
-			break;
+			return;
 		default:
 			break;
 		}
 	}
 
 	// Get connection info 
-	if (!SessionInterface.IsValid()) return;
+	if (!SessionInterface.IsValid()) {
+		UE_LOG(LogTemp, Error, TEXT("SessionInterface is not valid."));
+		return;
+	}
 	FString Address;
 	if (!SessionInterface->GetResolvedConnectString(SessionName, Address)) {
 		UE_LOG(LogTemp, Warning, TEXT("Could not retrieve connection string."));
@@ -224,11 +265,17 @@ void UPuzzlePlatformsGameInstance::OnJoinSessionComplete(FName SessionName, EOnJ
 
 	// Connect
 	UEngine* Engine = GetEngine();
-	if (!ensure(Engine != nullptr)) return;
+	if (!ensure(Engine != nullptr)) {
+		UE_LOG(LogTemp, Error, TEXT("Engine pointer is NULL."));
+		return;
+	}
 	Engine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Cyan, FString::Printf(TEXT("Joining %s..."), *Address));
 
 	APlayerController* PlayerController = GetFirstLocalPlayerController();
-	if (!ensure(PlayerController != nullptr)) return;
+	if (!ensure(PlayerController != nullptr)) {
+		UE_LOG(LogTemp, Error, TEXT("Player controller is NULL."));
+		return;
+	}
 	PlayerController->ClientTravel(*Address, TRAVEL_Absolute);
 	Engine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Cyan, FString::Printf(TEXT("Successfully joined"), *Address));
 }

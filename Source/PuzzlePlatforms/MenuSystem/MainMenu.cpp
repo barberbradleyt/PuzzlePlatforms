@@ -26,7 +26,13 @@ bool UMainMenu::Initialize() {
 	
 	// TODO: setup
 	if (!ensure(HostButton != nullptr)) return false;
-	HostButton->OnClicked.AddDynamic(this, &UMainMenu::HostServer);
+	HostButton->OnClicked.AddDynamic(this, &UMainMenu::OpenHostMenu);
+
+	if (!ensure(HostLobbyButton != nullptr)) return false;
+	HostLobbyButton->OnClicked.AddDynamic(this, &UMainMenu::HostServer);
+
+	if (!ensure(BackFromHostButton != nullptr)) return false;
+	BackFromHostButton->OnClicked.AddDynamic(this, &UMainMenu::OpenMainMenu);
 
 	if (!ensure(JoinButton != nullptr)) return false;
 	JoinButton->OnClicked.AddDynamic(this, &UMainMenu::OpenJoinMenu);
@@ -34,8 +40,8 @@ bool UMainMenu::Initialize() {
 	if (!ensure(JoinWithIPButton != nullptr)) return false;
 	JoinWithIPButton->OnClicked.AddDynamic(this, &UMainMenu::JoinServer);
 
-	if (!ensure(BackToMainButton != nullptr)) return false;
-	BackToMainButton->OnClicked.AddDynamic(this, &UMainMenu::OpenMainMenu);
+	if (!ensure(BackFromJoinButton != nullptr)) return false;
+	BackFromJoinButton->OnClicked.AddDynamic(this, &UMainMenu::OpenMainMenu);
 
 	if (!ensure(QuitButton != nullptr)) return false;
 	QuitButton->OnClicked.AddDynamic(this, &UMainMenu::QuitPressed);
@@ -63,20 +69,27 @@ void UMainMenu::HostServer() {
 		UE_LOG(LogTemp, Warning, TEXT("MainMenuInterface is null"));
 		return;
 	}
-	MainMenuInterface->Host();
+	FString LobbyName = CustomLobbyName->GetText().ToString();
+	MainMenuInterface->Host(LobbyName);
 }
 
-void UMainMenu::SetServerList(TArray<FString> ServerNames) {
+void UMainMenu::SetServerList(TArray<FServerData> ServerData) {
 	UWorld* World = this->GetWorld();
 	if (!ensure(World != nullptr)) return;
 
 	ServerResults->ClearChildren();
 	uint32 current_index = 0;
-	for (const FString& ServerName : ServerNames) {
+	for (const FServerData& Server : ServerData) {
 		UServerResultWidget* ServerResult = CreateWidget<UServerResultWidget>(World, ServerResultClass);
 		if (!ensure(ServerResult != nullptr)) return;
 
-		ServerResult->SetServerName(ServerName);
+		ServerResult->SetServerName(Server.Name);
+		ServerResult->SetServerHostname(Server.Hostname);
+		ServerResult->SetPlayerCount(
+			FString::Format(
+				TEXT("{0}/{1}"), 
+				{ Server.CurrentPlayers, Server.MaxPlayers }
+		));
 		ServerResult->Setup(this, current_index++);
 
 		UE_LOG(LogTemp, Warning, TEXT("Adding new ServerResult to ServerResults"));
@@ -86,12 +99,28 @@ void UMainMenu::SetServerList(TArray<FString> ServerNames) {
 
 void UMainMenu::SelectIndex(uint32 Index) {
 	SelectedIndex = Index;
+	UpdateChildren();
+}
+
+void UMainMenu::UpdateChildren() {
+	for (int32 i = 0; i < ServerResults->GetChildrenCount(); ++i) {
+		auto Server = Cast<UServerResultWidget>(ServerResults->GetChildAt(i));
+		if (Server != nullptr) {
+			Server->Selected = (SelectedIndex.IsSet() && SelectedIndex.GetValue() == i);
+		}
+	}
 }
 
 void UMainMenu::OpenMainMenu() {
 	if (!ensure(MenuSwitcher != nullptr)) return;
 	if (!ensure(MainMenu != nullptr)) return;
 	MenuSwitcher->SetActiveWidget(MainMenu);
+}
+
+void UMainMenu::OpenHostMenu() {
+	if (!ensure(MenuSwitcher != nullptr)) return;
+	if (!ensure(HostMenu != nullptr)) return;
+	MenuSwitcher->SetActiveWidget(HostMenu);
 }
 
 void UMainMenu::OpenJoinMenu() {
