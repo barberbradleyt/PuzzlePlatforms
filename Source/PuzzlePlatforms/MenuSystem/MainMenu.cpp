@@ -66,7 +66,7 @@ void UMainMenu::OnLevelRemovedFromWorld(ULevel* InLevel, UWorld* InWorld) {
 void UMainMenu::HostServer() {
 	UE_LOG(LogTemp, Display, TEXT("Hosting Server..."));
 	if (MainMenuInterface == nullptr) {
-		UE_LOG(LogTemp, Warning, TEXT("MainMenuInterface is null"));
+		UE_LOG(LogTemp, Warning, TEXT("MainMenuInterface is nullptr"));
 		return;
 	}
 	FString LobbyName = CustomLobbyName->GetText().ToString();

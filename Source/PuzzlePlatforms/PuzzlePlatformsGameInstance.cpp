@@ -5,11 +5,12 @@
 #include "UObject/ConstructorHelpers.h"
 #include "Blueprint/UserWidget.h"
 #include "OnlineSessionSettings.h"
+#include "UObject/UnrealNames.h"
 
 #include "MenuSystem/MainMenu.h"
 #include "MenuSystem/MenuWidget.h"
 
-const static FName SESSION_NAME = TEXT("My Game Session - 112bvvg47fg");
+const static FName SESSION_NAME = NAME_GameSession;
 const static FName CUSTOM_NAME_KEY = TEXT("CustomSessionName");
 
 UPuzzlePlatformsGameInstance::UPuzzlePlatformsGameInstance(const FObjectInitializer& ObjectInitializer) {
@@ -48,6 +49,10 @@ void UPuzzlePlatformsGameInstance::Init() {
 	SessionInterface->OnDestroySessionCompleteDelegates.AddUObject(this, &UPuzzlePlatformsGameInstance::OnDestroySessionComplete);
 	SessionInterface->OnFindSessionsCompleteDelegates.AddUObject(this, &UPuzzlePlatformsGameInstance::OnFindSessionComplete);
 	SessionInterface->OnJoinSessionCompleteDelegates.AddUObject(this, &UPuzzlePlatformsGameInstance::OnJoinSessionComplete);
+
+	if (GEngine != nullptr) {
+		GEngine->OnNetworkFailure().AddUObject(this, &UPuzzlePlatformsGameInstance::OnNetworkFailure);
+	}
 }
 
 void UPuzzlePlatformsGameInstance::LoadMenu() {
@@ -86,10 +91,10 @@ void UPuzzlePlatformsGameInstance::CreateSession(FString LobbyName) {
 
 	FOnlineSessionSettings SessionSettings;
 	SessionSettings.bIsLANMatch = IsLAN;
-	SessionSettings.NumPublicConnections = 2;
+	SessionSettings.NumPublicConnections = 3;
 	SessionSettings.bShouldAdvertise = true;
 	SessionSettings.bUsesPresence = true; // Use lobbies
-	//SessionSettings.bUseLobbiesIfAvailable = true; // Use lobbies in UE >= 4.27
+	SessionSettings.bUseLobbiesIfAvailable = true; // Use lobbies in UE >= 4.27
 	SessionSettings.Set(CUSTOM_NAME_KEY, LobbyName, EOnlineDataAdvertisementType::ViaOnlineServiceAndPing);
 
 	SessionInterface->CreateSession(0, SESSION_NAME, SessionSettings);
@@ -116,7 +121,7 @@ void UPuzzlePlatformsGameInstance::OnCreateSessionComplete(FName SessionName, bo
 
 	UWorld* World = GetWorld();
 	if (!ensure(World != nullptr)) return;
-	World->ServerTravel("/Game/ThirdPersonCPP/Maps/ThirdPersonExampleMap?listen");
+	World->ServerTravel("/Game/PuzzlePlatforms/Maps/Lobby?listen");
 }
 
 void UPuzzlePlatformsGameInstance::OnDestroySessionComplete(FName SessionName, bool Success) {
@@ -128,6 +133,11 @@ void UPuzzlePlatformsGameInstance::OnDestroySessionComplete(FName SessionName, b
 
 	//TODO: This should re-use the custom lobby name
 	CreateSession(TEXT("Recreated Session"));
+}
+
+void UPuzzlePlatformsGameInstance::OnNetworkFailure(UWorld* World, UNetDriver* NetDriver, ENetworkFailure::Type FailureType, const FString& ErrorString) {
+	UE_LOG(LogTemp, Error, TEXT("Network error occurred: %s."), ToString(FailureType));
+	LoadMainMenu();
 }
 
 void UPuzzlePlatformsGameInstance::RefreshServerList() {
@@ -183,13 +193,6 @@ void UPuzzlePlatformsGameInstance::OnFindSessionComplete(bool bWasSuccessful) {
 		Server.MaxPlayers = Result.Session.SessionSettings.NumPublicConnections;
 		Server.CurrentPlayers = Server.MaxPlayers - Result.Session.NumOpenPublicConnections;
 
-		//Debugging
-		UE_LOG(LogTemp, Warning, TEXT("Session Name = %s"), *Server.Name);
-		UE_LOG(LogTemp, Warning, TEXT("Owning Username = %s"), *Server.Hostname);
-		UE_LOG(LogTemp, Warning, TEXT("CurrentPlayers = %d"), Server.CurrentPlayers);
-		UE_LOG(LogTemp, Warning, TEXT("MaxPlayers = %d"), Server.MaxPlayers);
-		//
-
 		ServerData.Add(Server);
 	}
 
@@ -208,24 +211,13 @@ void UPuzzlePlatformsGameInstance::Join(uint32 Index) {
 		return;
 	}
 
-	if (Menu != nullptr) {
-		Menu->Teardown();
-	}
-
-	UE_LOG(LogTemp, Warning, TEXT("Calling SessionInterface->JoinSession..."));
+	UE_LOG(LogTemp, Warning, TEXT("Calling JoinSession(0, %d, %s)"), Index, *SessionSearch->SearchResults[Index].GetSessionIdStr());
 	SessionInterface->JoinSession(0, SESSION_NAME, SessionSearch->SearchResults[Index]);
 	UE_LOG(LogTemp, Warning, TEXT("Awaiting response..."));
 }
 
 void UPuzzlePlatformsGameInstance::OnJoinSessionComplete(FName SessionName, EOnJoinSessionCompleteResult::Type Result) {
 	UE_LOG(LogTemp, Warning, TEXT("Response received. Processing..."));
-
-	// Ensure Result is successful
-	if (Result == NULL) {
-		UE_LOG(LogTemp, Error, TEXT("Join result was NULL."));
-		return;
-	}
-
 	
 	if (IsLAN) { //Result does not come back Success for LAN
 		UE_LOG(LogTemp, Error, TEXT("Joining LAN session."));
@@ -247,6 +239,9 @@ void UPuzzlePlatformsGameInstance::OnJoinSessionComplete(FName SessionName, EOnJ
 			return;
 		case EOnJoinSessionCompleteResult::UnknownError:
 			UE_LOG(LogTemp, Error, TEXT("Unknown error. Unable to join session."));
+			return;
+		case NULL:
+			UE_LOG(LogTemp, Error, TEXT("Join result was NULL."));
 			return;
 		default:
 			break;
@@ -276,8 +271,19 @@ void UPuzzlePlatformsGameInstance::OnJoinSessionComplete(FName SessionName, EOnJ
 		UE_LOG(LogTemp, Error, TEXT("Player controller is NULL."));
 		return;
 	}
+
+	if (Menu != nullptr) {
+		Menu->Teardown();
+	}
+
 	PlayerController->ClientTravel(*Address, TRAVEL_Absolute);
 	Engine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Cyan, FString::Printf(TEXT("Successfully joined"), *Address));
+}
+
+void UPuzzlePlatformsGameInstance::StartSession() {
+	if (SessionInterface.IsValid()) {
+		SessionInterface->StartSession(SESSION_NAME);
+	}
 }
 
 void UPuzzlePlatformsGameInstance::LoadMainMenu() {
