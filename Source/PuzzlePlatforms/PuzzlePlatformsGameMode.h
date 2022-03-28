@@ -13,6 +13,11 @@ class APuzzlePlatformsGameMode : public AGameModeBase
 
 public:
 	APuzzlePlatformsGameMode();
+
+	void PlayerWon(AActor* OverlappedActor);
+
+private:
+	void RestartGame();
 };
 
 
