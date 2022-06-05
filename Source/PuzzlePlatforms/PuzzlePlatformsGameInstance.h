@@ -28,6 +28,9 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void LoadPauseMenu();
 
+	UFUNCTION(BlueprintCallable)
+	void LoadLevelEndMenu(AActor* WinningPlayer);
+
 	UFUNCTION(Exec)
 	void Host(FString LobbyName) override;
 
@@ -35,6 +38,8 @@ public:
 	void Join(uint32 Index) override;
 
 	void StartSession();
+
+	void RestartLevel();
 
 	virtual void LoadMainMenu() override;
 
@@ -45,6 +50,7 @@ private:
 
 	TSubclassOf<UUserWidget> MainMenuClass;
 	TSubclassOf<UUserWidget> PauseMenuClass;
+	TSubclassOf<UUserWidget> LevelEndMenuClass;
 
 	class UMainMenu* Menu;
 	

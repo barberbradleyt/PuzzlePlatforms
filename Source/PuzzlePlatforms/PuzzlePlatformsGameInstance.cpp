@@ -75,6 +75,16 @@ void UPuzzlePlatformsGameInstance::LoadPauseMenu() {
 	PauseMenu->SetMenuInterface(this);
 }
 
+void UPuzzlePlatformsGameInstance::LoadLevelEndMenu(AActor* WinningPlayer) {
+	if (!ensure(LevelEndMenuClass != nullptr)) return;
+
+	UMenuWidget* LevelEndMenu = CreateWidget<UMenuWidget>(this, LevelEndMenuClass);
+	if (!ensure(LevelEndMenu != nullptr)) return;
+
+	LevelEndMenu->Setup();
+	LevelEndMenu->SetMenuInterface(this);
+}
+
 void UPuzzlePlatformsGameInstance::Host(FString LobbyName) {
 	if (SessionInterface.IsValid()) {
 		auto ExistingSession = SessionInterface->GetNamedSession(SESSION_NAME);
@@ -284,6 +294,10 @@ void UPuzzlePlatformsGameInstance::StartSession() {
 	if (SessionInterface.IsValid()) {
 		SessionInterface->StartSession(SESSION_NAME);
 	}
+}
+
+void UPuzzlePlatformsGameInstance::RestartLevel() {
+	
 }
 
 void UPuzzlePlatformsGameInstance::LoadMainMenu() {

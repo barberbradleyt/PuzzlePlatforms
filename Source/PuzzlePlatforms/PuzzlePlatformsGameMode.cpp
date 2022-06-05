@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "PuzzlePlatformsGameMode.h"
+#include "PuzzlePlatformsGameInstance.h"
 #include "PuzzlePlatformsCharacter.h"
 #include "UObject/ConstructorHelpers.h"
 #include "GameFramework/GameSession.h"
@@ -26,7 +27,7 @@ void APuzzlePlatformsGameMode::PlayerWon(AActor* Winner) {
 	
 	Engine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Cyan, FString::Printf(TEXT("Player %s won!!!"), *Winner->GetName()));
 
-	RestartGame();
+	Cast<UPuzzlePlatformsGameInstance>(GetGameInstance())->LoadLevelEndMenu(Winner);
 }
 
 void APuzzlePlatformsGameMode::RestartGame() {
